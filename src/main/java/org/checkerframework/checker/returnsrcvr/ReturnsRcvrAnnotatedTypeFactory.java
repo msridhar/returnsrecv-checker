@@ -5,6 +5,7 @@ import java.nio.file.Path;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.Modifier;
 
 import org.checkerframework.checker.returnsrcvr.qual.MaybeThis;
 import org.checkerframework.checker.returnsrcvr.qual.This;
@@ -66,10 +67,42 @@ public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
                 AnnotatedTypeMirror.AnnotatedDeclaredType receiverType = t.getReceiverType();
                 receiverType.replaceAnnotation(THIS_ANNOT);
             }
+            
+            if(isAutoValueBuilderSetter(t.getElement())){
+            	returnType.replaceAnnotation(THIS_ANNOT);
+            	AnnotatedTypeMirror.AnnotatedDeclaredType receiverType = t.getReceiverType();
+                receiverType.replaceAnnotation(THIS_ANNOT);
+            }
+            
+            
+            
             return super.visitExecutable(t, p);
         }
 
+        private boolean isAutoValueBuilderSetter(Element element) {
+            MethodTree methodTree = (MethodTree) declarationFromElement(element);
+            if (methodTree == null) {
+              return false;
+            }
 
+            if (!methodTree.getModifiers().getFlags().contains(Modifier.ABSTRACT)) {
+              return false;
+            }
+            ClassTree enclosingClass = TreeUtils.enclosingClass(getPath(methodTree));
+
+            if (enclosingClass == null) {
+              return false;
+            }
+            
+            boolean inAutoValueBuilder = hasAnnotation(enclosingClass, AutoValue.Builder.class);
+
+            if (inAutoValueBuilder) {
+            	boolean isSetter = methodTree.getName().toString().matches("set.*");
+            	return isSetter;
+            }
+            
+            return inAutoValueBuilder;
+          }
         
     }
     
@@ -79,35 +112,6 @@ public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
           super(atypeFactory);
         }
         
-        @Override
-        public Void visitMethod(
-            final MethodTree tree, final AnnotatedTypeMirror type) {
-        	
-        	isAutoValueBuilderSetter(tree);
-        	return super.visitMethod(tree, type);
-        }
-        
-        private boolean isAutoValueBuilderSetter(MethodTree tree) {
-        	
-            ClassTree enclosingClass = TreeUtils.enclosingClass(getPath(tree));
-
-            if (enclosingClass == null) {
-                return false;
-            }
-            
-//            System.out.println(enclosingClass.getSimpleName());
-
-//            all methods inside @AutoValue_Builder will be 
-            boolean inAutoValueBuilder = hasAnnotation(enclosingClass, AutoValue.Builder.class);
-
-
-            if (inAutoValueBuilder) {
-            	boolean isSetter = tree.getName().toString().matches("set.*");
-            	return isSetter;
-            }
-            
-            return false;
-        }
     }
     
     private static boolean hasAnnotation(
