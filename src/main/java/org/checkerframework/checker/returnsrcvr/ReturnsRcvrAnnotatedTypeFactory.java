@@ -1,17 +1,30 @@
 package org.checkerframework.checker.returnsrcvr;
 
+import java.lang.annotation.Annotation;
+import java.nio.file.Path;
+
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.Element;
+
 import org.checkerframework.checker.returnsrcvr.qual.MaybeThis;
 import org.checkerframework.checker.returnsrcvr.qual.This;
 import org.checkerframework.common.basetype.BaseAnnotatedTypeFactory;
 import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.framework.type.AnnotatedTypeFactory;
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
+import org.checkerframework.framework.type.treeannotator.ListTreeAnnotator;
+import org.checkerframework.framework.type.treeannotator.TreeAnnotator;
 import org.checkerframework.framework.type.typeannotator.ListTypeAnnotator;
 import org.checkerframework.framework.type.typeannotator.TypeAnnotator;
 import org.checkerframework.javacutil.AnnotationBuilder;
 import org.checkerframework.javacutil.AnnotationUtils;
+import org.checkerframework.javacutil.TreeUtils;
 
-import javax.lang.model.element.AnnotationMirror;
+import com.google.auto.value.AutoValue;
+import com.sun.source.tree.ClassTree;
+import com.sun.source.tree.MethodTree;
+import com.sun.source.tree.Tree;
+import com.sun.source.util.TreePath;
 
 public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
 
@@ -29,6 +42,12 @@ public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
         return new ListTypeAnnotator(
                 super.createTypeAnnotator(), new ReturnsRcvrTypeAnnotator(this));
     }
+    
+    @Override
+    public TreeAnnotator createTreeAnnotator() {
+      return new ListTreeAnnotator(
+          super.createTreeAnnotator(), new ReturnsRcvrTreeAnnotator(this));
+    }
 
     private class ReturnsRcvrTypeAnnotator extends TypeAnnotator {
 
@@ -38,6 +57,7 @@ public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
 
         @Override
         public Void visitExecutable(AnnotatedTypeMirror.AnnotatedExecutableType t, Void p) {
+        	
             AnnotatedTypeMirror returnType = t.getReturnType();
             AnnotationMirror maybeThisAnnot = AnnotationBuilder.fromClass(elements, MaybeThis.class);
             AnnotationMirror retAnnotation = returnType.getAnnotationInHierarchy(maybeThisAnnot);
@@ -48,5 +68,54 @@ public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
             }
             return super.visitExecutable(t, p);
         }
+
+
+        
     }
+    
+    private class ReturnsRcvrTreeAnnotator extends TreeAnnotator {
+    	
+        public ReturnsRcvrTreeAnnotator(final AnnotatedTypeFactory atypeFactory) {
+          super(atypeFactory);
+        }
+        
+        @Override
+        public Void visitMethod(
+            final MethodTree tree, final AnnotatedTypeMirror type) {
+        	
+        	isAutoValueBuilderSetter(tree);
+        	return super.visitMethod(tree, type);
+        }
+        
+        private boolean isAutoValueBuilderSetter(MethodTree tree) {
+        	
+            ClassTree enclosingClass = TreeUtils.enclosingClass(getPath(tree));
+
+            if (enclosingClass == null) {
+                return false;
+            }
+            
+//            System.out.println(enclosingClass.getSimpleName());
+
+//            all methods inside @AutoValue_Builder will be 
+            boolean inAutoValueBuilder = hasAnnotation(enclosingClass, AutoValue.Builder.class);
+
+
+            if (inAutoValueBuilder) {
+            	boolean isSetter = tree.getName().toString().matches("set.*");
+            	return isSetter;
+            }
+            
+            return false;
+        }
+    }
+    
+    private static boolean hasAnnotation(
+            ClassTree enclosingClass, Class<? extends Annotation> annotClass) {
+        return enclosingClass.getModifiers().getAnnotations().stream()
+                .map(TreeUtils::annotationFromAnnotationTree)
+                .anyMatch(anm -> AnnotationUtils.areSameByClass(anm, annotClass));
+    }
+
+
 }
