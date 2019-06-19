@@ -42,11 +42,6 @@ public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
                 super.createTypeAnnotator(), new ReturnsRcvrTypeAnnotator(this));
     }
     
-    @Override
-    public TreeAnnotator createTreeAnnotator() {
-      return new ListTreeAnnotator(
-          super.createTreeAnnotator(), new ReturnsRcvrTreeAnnotator(this));
-    }
 
     private class ReturnsRcvrTypeAnnotator extends TypeAnnotator {
 
@@ -113,13 +108,6 @@ public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
         
     }
     
-    private class ReturnsRcvrTreeAnnotator extends TreeAnnotator {
-    	
-        public ReturnsRcvrTreeAnnotator(final AnnotatedTypeFactory atypeFactory) {
-          super(atypeFactory);
-        }
-        
-    }
     
     private static boolean hasAnnotation(
             ClassTree enclosingClass, Class<? extends Annotation> annotClass) {
