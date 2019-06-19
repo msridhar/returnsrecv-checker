@@ -6,6 +6,8 @@ import java.nio.file.Path;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
 
 import org.checkerframework.checker.returnsrcvr.qual.MaybeThis;
 import org.checkerframework.checker.returnsrcvr.qual.This;
@@ -17,9 +19,7 @@ import org.checkerframework.framework.type.treeannotator.ListTreeAnnotator;
 import org.checkerframework.framework.type.treeannotator.TreeAnnotator;
 import org.checkerframework.framework.type.typeannotator.ListTypeAnnotator;
 import org.checkerframework.framework.type.typeannotator.TypeAnnotator;
-import org.checkerframework.javacutil.AnnotationBuilder;
-import org.checkerframework.javacutil.AnnotationUtils;
-import org.checkerframework.javacutil.TreeUtils;
+import org.checkerframework.javacutil.*;
 
 import com.google.auto.value.AutoValue;
 import com.sun.source.tree.ClassTree;
@@ -85,9 +85,6 @@ public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
               return false;
             }
 
-            if (!methodTree.getModifiers().getFlags().contains(Modifier.ABSTRACT)) {
-              return false;
-            }
             ClassTree enclosingClass = TreeUtils.enclosingClass(getPath(methodTree));
 
             if (enclosingClass == null) {
@@ -96,12 +93,24 @@ public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
             
             boolean inAutoValueBuilder = hasAnnotation(enclosingClass, AutoValue.Builder.class);
 
+            if (!inAutoValueBuilder) {
+                // see if superclass is an AutoValue Builder, to handle generated code
+                // NOTE: this doesn't work yet.  we are getting a null superclassTree unexpectedly.
+                // need to figure out how to get annotations given a TypeMirror
+                TypeElement typeElement = TreeUtils.elementFromDeclaration(enclosingClass);
+                TypeMirror superclass = typeElement.getSuperclass();
+                ClassTree superclassTree =
+                    (ClassTree) declarationFromElement(TypesUtils.getTypeElement(superclass));
+                inAutoValueBuilder = superclassTree != null && hasAnnotation(superclassTree, AutoValue.Builder.class);
+            }
+
             if (inAutoValueBuilder) {
-            	boolean isSetter = methodTree.getName().toString().matches("set.*");
-            	return isSetter;
+                Element classElem = TreeUtils.elementFromTree(enclosingClass);
+                Tree returnType = methodTree.getReturnType();
+                return returnType != null && classElem.equals(TreeUtils.elementFromTree(returnType));
             }
             
-            return inAutoValueBuilder;
+            return false;
           }
         
     }
