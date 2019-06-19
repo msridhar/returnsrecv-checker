@@ -1,14 +1,9 @@
 package org.checkerframework.checker.returnsrcvr;
 
-import java.lang.annotation.Annotation;
-import java.nio.file.Path;
-
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.TypeMirror;
-
+import com.google.auto.value.AutoValue;
+import com.sun.source.tree.ClassTree;
+import com.sun.source.tree.MethodTree;
+import com.sun.source.tree.Tree;
 import org.checkerframework.checker.returnsrcvr.qual.MaybeThis;
 import org.checkerframework.checker.returnsrcvr.qual.This;
 import org.checkerframework.common.basetype.BaseAnnotatedTypeFactory;
@@ -19,13 +14,16 @@ import org.checkerframework.framework.type.treeannotator.ListTreeAnnotator;
 import org.checkerframework.framework.type.treeannotator.TreeAnnotator;
 import org.checkerframework.framework.type.typeannotator.ListTypeAnnotator;
 import org.checkerframework.framework.type.typeannotator.TypeAnnotator;
-import org.checkerframework.javacutil.*;
+import org.checkerframework.javacutil.AnnotationBuilder;
+import org.checkerframework.javacutil.AnnotationUtils;
+import org.checkerframework.javacutil.TreeUtils;
+import org.checkerframework.javacutil.TypesUtils;
 
-import com.google.auto.value.AutoValue;
-import com.sun.source.tree.ClassTree;
-import com.sun.source.tree.MethodTree;
-import com.sun.source.tree.Tree;
-import com.sun.source.util.TreePath;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
+import java.lang.annotation.Annotation;
 
 public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
 
@@ -90,24 +88,24 @@ public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
             if (enclosingClass == null) {
               return false;
             }
-            
+
+
             boolean inAutoValueBuilder = hasAnnotation(enclosingClass, AutoValue.Builder.class);
+            // if we are in an AutoValue Builder, this will be the element for the abstract Builder class
+            Element builderClassElem = TreeUtils.elementFromTree(enclosingClass);
 
             if (!inAutoValueBuilder) {
                 // see if superclass is an AutoValue Builder, to handle generated code
-                // NOTE: this doesn't work yet.  we are getting a null superclassTree unexpectedly.
-                // need to figure out how to get annotations given a TypeMirror
                 TypeElement typeElement = TreeUtils.elementFromDeclaration(enclosingClass);
                 TypeMirror superclass = typeElement.getSuperclass();
-                ClassTree superclassTree =
-                    (ClassTree) declarationFromElement(TypesUtils.getTypeElement(superclass));
-                inAutoValueBuilder = superclassTree != null && hasAnnotation(superclassTree, AutoValue.Builder.class);
+                // update builderClassElem to be for the superclass for this case
+                builderClassElem = TypesUtils.getTypeElement(superclass);
+                inAutoValueBuilder = builderClassElem.getAnnotation(AutoValue.Builder.class) != null;
             }
 
             if (inAutoValueBuilder) {
-                Element classElem = TreeUtils.elementFromTree(enclosingClass);
                 Tree returnType = methodTree.getReturnType();
-                return returnType != null && classElem.equals(TreeUtils.elementFromTree(returnType));
+                return returnType != null && builderClassElem.equals(TreeUtils.elementFromTree(returnType));
             }
             
             return false;
