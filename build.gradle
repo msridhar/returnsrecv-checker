@@ -19,16 +19,20 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     testCompile 'org.checkerframework:testlib:2.5.4'
 
+    // AutoValue support
     implementation 'com.google.auto.value:auto-value-annotations:1.6.5'
     testCompile 'com.google.auto.value:auto-value-annotations:1.6.5'
     testCompile 'com.google.auto.value:auto-value:1.6.5'
+
+    // Lombok support
+    implementation 'org.projectlombok:lombok:1.18.8'
 }
 
 tasks.withType(JavaCompile).all {
     options.compilerArgs.add("-Xlint:all")
 }
 
-// Run `./gradlew publish` to publish your checker to your local Maven repository.
+// Run `./gradlew publishToMavenLocal` to publish your checker to your local Maven repository.
 publishing {
     publications {
         maven(MavenPublication) {
