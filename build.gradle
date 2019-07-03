@@ -13,11 +13,11 @@ sourceCompatibility = 1.8
 
 dependencies {
     // This dependency is found on compile classpath of this component and consumers.
-    implementation 'org.checkerframework:checker:2.8.1'
+    implementation 'io.github.eisop:checker:3.0.0-b2'
 
     // Testing
     testImplementation 'junit:junit:4.12'
-    testCompile 'org.checkerframework:testlib:2.5.4'
+    testCompile 'io.github.eisop:framework-test:3.0.0-b2'
 
     // AutoValue support
     implementation 'com.google.auto.value:auto-value-annotations:1.6.5'
