@@ -9,9 +9,7 @@ import org.checkerframework.framework.qual.ImplicitFor;
 import org.checkerframework.framework.qual.LiteralKind;
 import org.checkerframework.framework.qual.SubtypeOf;
 
-/**
- * The top type for the TemplateFora Checker's type system.
- */
+/** The top type for the TemplateFora Checker's type system. */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE_USE, ElementType.TYPE_PARAMETER})
 @DefaultQualifierInHierarchy

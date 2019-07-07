@@ -15,18 +15,18 @@ import org.junit.runners.Parameterized.Parameters;
  * https://github.com/typetools/checker-framework/blob/master/checker/tests/README .
  */
 public class ReturnsRcvrTest extends CheckerFrameworkPerDirectoryTest {
-    public ReturnsRcvrTest(List<File> testFiles) {
-        super(
-                testFiles,
-                ReturnsRcvrChecker.class,
-                "returnsrcvr",
-                "-Anomsgtext",
-                "-Astubs=stubs/",
-                "-nowarn");
-    }
+  public ReturnsRcvrTest(List<File> testFiles) {
+    super(
+        testFiles,
+        ReturnsRcvrChecker.class,
+        "returnsrcvr",
+        "-Anomsgtext",
+        "-Astubs=stubs/",
+        "-nowarn");
+  }
 
-    @Parameters
-    public static String[] getTestDirs() {
-        return new String[] {"returnsrcvr"};
-    }
+  @Parameters
+  public static String[] getTestDirs() {
+    return new String[] {"returnsrcvr"};
+  }
 }

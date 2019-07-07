@@ -4,6 +4,12 @@ import com.google.auto.value.AutoValue;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
+import java.lang.annotation.Annotation;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
 import org.checkerframework.checker.returnsrcvr.qual.MaybeThis;
 import org.checkerframework.checker.returnsrcvr.qual.This;
 import org.checkerframework.common.basetype.BaseAnnotatedTypeFactory;
@@ -17,103 +23,94 @@ import org.checkerframework.javacutil.AnnotationUtils;
 import org.checkerframework.javacutil.TreeUtils;
 import org.checkerframework.javacutil.TypesUtils;
 
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.TypeMirror;
-import java.lang.annotation.Annotation;
-
 public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
 
-    AnnotationMirror THIS_ANNOT;
+  AnnotationMirror THIS_ANNOT;
 
-    public ReturnsRcvrAnnotatedTypeFactory(BaseTypeChecker checker) {
-        super(checker);
-        THIS_ANNOT = AnnotationBuilder.fromClass(elements, This.class);
-        // we have to call this explicitly
-        this.postInit();
+  public ReturnsRcvrAnnotatedTypeFactory(BaseTypeChecker checker) {
+    super(checker);
+    THIS_ANNOT = AnnotationBuilder.fromClass(elements, This.class);
+    // we have to call this explicitly
+    this.postInit();
+  }
+
+  @Override
+  protected TypeAnnotator createTypeAnnotator() {
+    return new ListTypeAnnotator(super.createTypeAnnotator(), new ReturnsRcvrTypeAnnotator(this));
+  }
+
+  private class ReturnsRcvrTypeAnnotator extends TypeAnnotator {
+
+    public ReturnsRcvrTypeAnnotator(AnnotatedTypeFactory typeFactory) {
+      super(typeFactory);
     }
 
     @Override
-    protected TypeAnnotator createTypeAnnotator() {
-        return new ListTypeAnnotator(
-                super.createTypeAnnotator(), new ReturnsRcvrTypeAnnotator(this));
+    public Void visitExecutable(AnnotatedTypeMirror.AnnotatedExecutableType t, Void p) {
+
+      AnnotatedTypeMirror returnType = t.getReturnType();
+      AnnotationMirror maybeThisAnnot = AnnotationBuilder.fromClass(elements, MaybeThis.class);
+      AnnotationMirror retAnnotation = returnType.getAnnotationInHierarchy(maybeThisAnnot);
+      if (retAnnotation != null && AnnotationUtils.areSame(retAnnotation, THIS_ANNOT)) {
+        // add @This to the receiver type
+        AnnotatedTypeMirror.AnnotatedDeclaredType receiverType = t.getReceiverType();
+        receiverType.replaceAnnotation(THIS_ANNOT);
+      }
+
+      if (isBuilderSetter(t.getElement())) {
+        returnType.replaceAnnotation(THIS_ANNOT);
+        AnnotatedTypeMirror.AnnotatedDeclaredType receiverType = t.getReceiverType();
+        receiverType.replaceAnnotation(THIS_ANNOT);
+      }
+
+      return super.visitExecutable(t, p);
     }
 
-    private class ReturnsRcvrTypeAnnotator extends TypeAnnotator {
+    /**
+     * Checks if the given element is a setter in either an AutoValue builder or a Lombok builder
+     */
+    private boolean isBuilderSetter(ExecutableElement element) {
+      MethodTree methodTree = (MethodTree) declarationFromElement(element);
+      if (methodTree == null) {
+        return false;
+      }
 
-        public ReturnsRcvrTypeAnnotator(AnnotatedTypeFactory typeFactory) {
-            super(typeFactory);
-        }
+      ClassTree enclosingClass = TreeUtils.enclosingClass(getPath(methodTree));
 
-        @Override
-        public Void visitExecutable(AnnotatedTypeMirror.AnnotatedExecutableType t, Void p) {
-        	
-            AnnotatedTypeMirror returnType = t.getReturnType();
-            AnnotationMirror maybeThisAnnot = AnnotationBuilder.fromClass(elements, MaybeThis.class);
-            AnnotationMirror retAnnotation = returnType.getAnnotationInHierarchy(maybeThisAnnot);
-            if (retAnnotation != null && AnnotationUtils.areSame(retAnnotation, THIS_ANNOT)) {
-                // add @This to the receiver type
-                AnnotatedTypeMirror.AnnotatedDeclaredType receiverType = t.getReceiverType();
-                receiverType.replaceAnnotation(THIS_ANNOT);
-            }
-            
-            if(isBuilderSetter(t.getElement())){
-            	returnType.replaceAnnotation(THIS_ANNOT);
-            	AnnotatedTypeMirror.AnnotatedDeclaredType receiverType = t.getReceiverType();
-                receiverType.replaceAnnotation(THIS_ANNOT);
-            }
+      if (enclosingClass == null) {
+        return false;
+      }
 
-            return super.visitExecutable(t, p);
-        }
+      boolean inAutoValueBuilder = hasAnnotation(enclosingClass, AutoValue.Builder.class);
+      boolean inLombokBuilder =
+          hasAnnotation(enclosingClass, lombok.Generated.class)
+              && enclosingClass.getSimpleName().toString().endsWith("Builder");
 
-        /**
-         * Checks if the given element is a setter in either
-         * an AutoValue builder or a Lombok builder
-         */
-        private boolean isBuilderSetter(ExecutableElement element) {
-            MethodTree methodTree = (MethodTree) declarationFromElement(element);
-            if (methodTree == null) {
-              return false;
-            }
+      // if we are in an AutoValue Builder, this will be the element for the abstract Builder class
+      Element builderClassElem = TreeUtils.elementFromTree(enclosingClass);
 
-            ClassTree enclosingClass = TreeUtils.enclosingClass(getPath(methodTree));
+      if (!inAutoValueBuilder && !inLombokBuilder) {
+        // see if superclass is an AutoValue Builder, to handle generated code
+        TypeElement typeElement = TreeUtils.elementFromDeclaration(enclosingClass);
+        TypeMirror superclass = typeElement.getSuperclass();
+        // update builderClassElem to be for the superclass for this case
+        builderClassElem = TypesUtils.getTypeElement(superclass);
+        inAutoValueBuilder = builderClassElem.getAnnotation(AutoValue.Builder.class) != null;
+      }
 
-            if (enclosingClass == null) {
-              return false;
-            }
+      if (inAutoValueBuilder || inLombokBuilder) {
+        Tree returnType = methodTree.getReturnType();
+        return returnType != null && builderClassElem.equals(TreeUtils.elementFromTree(returnType));
+      }
 
-            boolean inAutoValueBuilder = hasAnnotation(enclosingClass, AutoValue.Builder.class);
-            boolean inLombokBuilder = hasAnnotation(enclosingClass, lombok.Generated.class)
-                    && enclosingClass.getSimpleName().toString().endsWith("Builder");
-
-            // if we are in an AutoValue Builder, this will be the element for the abstract Builder class
-            Element builderClassElem = TreeUtils.elementFromTree(enclosingClass);
-
-            if (!inAutoValueBuilder && !inLombokBuilder) {
-                // see if superclass is an AutoValue Builder, to handle generated code
-                TypeElement typeElement = TreeUtils.elementFromDeclaration(enclosingClass);
-                TypeMirror superclass = typeElement.getSuperclass();
-                // update builderClassElem to be for the superclass for this case
-                builderClassElem = TypesUtils.getTypeElement(superclass);
-                inAutoValueBuilder = builderClassElem.getAnnotation(AutoValue.Builder.class) != null;
-            }
-
-            if (inAutoValueBuilder || inLombokBuilder) {
-                Tree returnType = methodTree.getReturnType();
-                return returnType != null && builderClassElem.equals(TreeUtils.elementFromTree(returnType));
-            }
-            
-            return false;
-          }
-        
+      return false;
     }
+  }
 
-    private static boolean hasAnnotation(
-            ClassTree enclosingClass, Class<? extends Annotation> annotClass) {
-        return enclosingClass.getModifiers().getAnnotations().stream()
-                .map(TreeUtils::annotationFromAnnotationTree)
-                .anyMatch(anm -> AnnotationUtils.areSameByClass(anm, annotClass));
-    }
+  private static boolean hasAnnotation(
+      ClassTree enclosingClass, Class<? extends Annotation> annotClass) {
+    return enclosingClass.getModifiers().getAnnotations().stream()
+        .map(TreeUtils::annotationFromAnnotationTree)
+        .anyMatch(anm -> AnnotationUtils.areSameByClass(anm, annotClass));
+  }
 }
