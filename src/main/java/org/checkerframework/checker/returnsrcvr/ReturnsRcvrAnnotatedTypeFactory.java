@@ -9,6 +9,7 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import org.checkerframework.checker.returnsrcvr.qual.MaybeThis;
 import org.checkerframework.checker.returnsrcvr.qual.This;
@@ -75,27 +76,30 @@ public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
         return false;
       }
 
-      ClassTree enclosingClass = TreeUtils.enclosingClass(getPath(methodTree));
+      ClassTree enclosingType = TreeUtils.enclosingClass(getPath(methodTree));
 
-      if (enclosingClass == null) {
+      if (enclosingType == null) {
         return false;
       }
 
-      boolean inAutoValueBuilder = hasAnnotation(enclosingClass, AutoValue.Builder.class);
+      boolean inAutoValueBuilder = hasAnnotation(enclosingType, AutoValue.Builder.class);
       boolean inLombokBuilder =
-          hasAnnotation(enclosingClass, lombok.Generated.class)
-              && enclosingClass.getSimpleName().toString().endsWith("Builder");
+          hasAnnotation(enclosingType, lombok.Generated.class)
+              && enclosingType.getSimpleName().toString().endsWith("Builder");
 
       // if we are in an AutoValue Builder, this will be the element for the abstract Builder class
-      Element builderClassElem = TreeUtils.elementFromTree(enclosingClass);
+      Element builderClassElem = TreeUtils.elementFromTree(enclosingType);
 
       if (!inAutoValueBuilder && !inLombokBuilder) {
         // see if superclass is an AutoValue Builder, to handle generated code
-        TypeElement typeElement = TreeUtils.elementFromDeclaration(enclosingClass);
+        TypeElement typeElement = TreeUtils.elementFromDeclaration(enclosingType);
         TypeMirror superclass = typeElement.getSuperclass();
-        // update builderClassElem to be for the superclass for this case
-        builderClassElem = TypesUtils.getTypeElement(superclass);
-        inAutoValueBuilder = builderClassElem.getAnnotation(AutoValue.Builder.class) != null;
+        // if enclosingType is an interface, the superclass has TypeKind NONE
+        if (!superclass.getKind().equals(TypeKind.NONE)) {
+          // update builderClassElem to be for the superclass for this case
+          builderClassElem = TypesUtils.getTypeElement(superclass);
+          inAutoValueBuilder = builderClassElem.getAnnotation(AutoValue.Builder.class) != null;
+        }
       }
 
       if (inAutoValueBuilder || inLombokBuilder) {
