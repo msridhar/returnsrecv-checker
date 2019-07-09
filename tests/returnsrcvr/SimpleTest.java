@@ -42,7 +42,7 @@ class SimpleTest {
         // :: error: assignment.type.incompatible
         @This SimpleTest x = new SimpleTest();
 
-        // this error we cant detect :: error: invalid.this.location
+        // :: error: invalid.this.location
         java.util.List<@This String> l = null;
     }
 
