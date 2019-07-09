@@ -82,24 +82,21 @@ public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
           hasAnnotation(enclosingElement, lombok.Generated.class)
               && enclosingElement.getSimpleName().toString().endsWith("Builder");
 
-      // if we are in an AutoValue Builder, this will be the element for the abstract Builder class
-      Element builderClassElem = enclosingElement;
-
       if (!inAutoValueBuilder && !inLombokBuilder) {
         // see if superclass is an AutoValue Builder, to handle generated code
         TypeMirror superclass = ((TypeElement) enclosingElement).getSuperclass();
         // if enclosingType is an interface, the superclass has TypeKind NONE
         if (!superclass.getKind().equals(TypeKind.NONE)) {
-          // update builderClassElem to be for the superclass for this case
-          builderClassElem = TypesUtils.getTypeElement(superclass);
-          inAutoValueBuilder = builderClassElem.getAnnotation(AutoValue.Builder.class) != null;
+          // update enclosingElement to be for the superclass for this case
+          enclosingElement = TypesUtils.getTypeElement(superclass);
+          inAutoValueBuilder = enclosingElement.getAnnotation(AutoValue.Builder.class) != null;
         }
       }
 
       if (inAutoValueBuilder || inLombokBuilder) {
         AnnotatedTypeMirror returnType = t.getReturnType();
         return returnType != null
-            && builderClassElem.equals(TypesUtils.getTypeElement(returnType.getUnderlyingType()));
+            && enclosingElement.equals(TypesUtils.getTypeElement(returnType.getUnderlyingType()));
       }
 
       return false;
