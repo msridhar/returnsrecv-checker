@@ -9,6 +9,7 @@ import org.checkerframework.framework.qual.DefaultQualifierInHierarchy;
 import org.checkerframework.framework.qual.LiteralKind;
 import org.checkerframework.framework.qual.QualifierForLiterals;
 import org.checkerframework.framework.qual.SubtypeOf;
+import org.checkerframework.framework.qual.TypeUseLocation;
 
 /** The top type for the TemplateFora Checker's type system. */
 @Retention(RetentionPolicy.RUNTIME)
@@ -16,5 +17,5 @@ import org.checkerframework.framework.qual.SubtypeOf;
 @DefaultQualifierInHierarchy
 @SubtypeOf({})
 @QualifierForLiterals(LiteralKind.NULL)
-@DefaultFor(types = Void.class)
+@DefaultFor(types = Void.class, value = TypeUseLocation.LOWER_BOUND)
 public @interface MaybeThis {}

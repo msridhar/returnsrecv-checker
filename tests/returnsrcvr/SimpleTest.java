@@ -43,6 +43,7 @@ class SimpleTest {
         @This SimpleTest x = new SimpleTest();
 
         // :: error: invalid.this.location
+        // :: error: type.argument.type.incompatible
         java.util.List<@This String> l = null;
     }
 
