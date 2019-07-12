@@ -34,15 +34,31 @@ tasks.withType(JavaCompile).all {
     options.compilerArgs.add("-Xlint:all")
 }
 
+def rrVersion = '0.1-SNAPSHOT'
+
+task qualJar(type: Jar) {
+    baseName 'returnsrcvr-qual'
+    from (sourceSets.main.output) {
+        include "**/qual/**"
+    }
+}
+
 // Run `./gradlew publishToMavenLocal` to publish your checker to your local Maven repository.
 publishing {
     publications {
-        maven(MavenPublication) {
+        checker(MavenPublication) {
             groupId = 'org.checkerframework'
             artifactId = 'returnsrcvr-checker'
-            version = '0.1-SNAPSHOT'
+            version = "${rrVersion}"
 
             from components.java
+        }
+
+        qual(MavenPublication) {
+            groupId = 'org.checkerframework'
+            artifactId = 'returnsrcvr-qual'
+            version = "${rrVersion}"
+            artifact qualJar
         }
     }
 }
