@@ -27,7 +27,7 @@ dependencies {
     testCompile 'com.google.auto.value:auto-value:1.6.5'
 
     // Lombok support
-    implementation 'org.projectlombok:lombok:1.18.8'
+    testCompile 'org.projectlombok:lombok:1.18.8'
 }
 
 tasks.withType(JavaCompile).all {
