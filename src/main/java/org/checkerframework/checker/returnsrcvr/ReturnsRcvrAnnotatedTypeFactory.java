@@ -79,7 +79,7 @@ public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
 
       boolean inAutoValueBuilder = hasAnnotation(enclosingElement, AutoValue.Builder.class);
       boolean inLombokBuilder =
-          hasAnnotation(enclosingElement, lombok.Generated.class)
+          hasAnnotationByName(enclosingElement, "lombok.Generated")
               && enclosingElement.getSimpleName().toString().endsWith("Builder");
 
       if (!inAutoValueBuilder && !inLombokBuilder) {
@@ -106,5 +106,10 @@ public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
   private boolean hasAnnotation(Element element, Class<? extends Annotation> annotClass) {
     return elements.getAllAnnotationMirrors(element).stream()
         .anyMatch(anm -> AnnotationUtils.areSameByClass(anm, annotClass));
+  }
+
+  private boolean hasAnnotationByName(Element element, String annotClassName) {
+    return elements.getAllAnnotationMirrors(element).stream()
+        .anyMatch(anm -> AnnotationUtils.areSameByName(anm, annotClassName));
   }
 }
