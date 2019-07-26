@@ -90,6 +90,16 @@ afterEvaluate { project ->
             }
           }
         }
+
+        pom.whenConfigured { pom ->
+          pom.dependencies.forEach { dep ->
+            if (dep.getVersion() == "unspecified") {
+              dep.setGroupId(GROUP)
+              dep.setVersion(VERSION_NAME)
+            }
+          }
+        }
+
       }
     }
   }
@@ -198,6 +208,15 @@ afterEvaluate { project ->
             developer {
               id POM_DEVELOPER_ID
               name POM_DEVELOPER_NAME
+            }
+          }
+        }
+
+        pom.whenConfigured { pom ->
+          pom.dependencies.forEach { dep ->
+            if (dep.getVersion() == "unspecified") {
+              dep.setGroupId(GROUP)
+              dep.setVersion(VERSION_NAME)
             }
           }
         }
