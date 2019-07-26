@@ -1,6 +1,5 @@
 plugins {
     id 'java'
-    id 'maven-publish'
 
     id "com.diffplug.gradle.spotless" version "3.23.0"
 }
@@ -33,35 +32,6 @@ dependencies {
 
 tasks.withType(JavaCompile).all {
     options.compilerArgs.add("-Xlint:all")
-}
-
-def rrVersion = '0.1-SNAPSHOT'
-
-task qualJar(type: Jar) {
-    baseName 'returnsrcvr-qual'
-    from (sourceSets.main.output) {
-        include "**/qual/**"
-    }
-}
-
-// Run `./gradlew publishToMavenLocal` to publish your checker to your local Maven repository.
-publishing {
-    publications {
-        checker(MavenPublication) {
-            groupId = 'org.checkerframework'
-            artifactId = 'returnsrcvr-checker'
-            version = "${rrVersion}"
-
-            from components.java
-        }
-
-        qual(MavenPublication) {
-            groupId = 'org.checkerframework'
-            artifactId = 'returnsrcvr-qual'
-            version = "${rrVersion}"
-            artifact qualJar
-        }
-    }
 }
 
 // run google java format
