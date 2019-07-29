@@ -1,73 +1,12 @@
-plugins {
-    id 'java'
-    id 'maven-publish'
-
-    id "com.diffplug.gradle.spotless" version "3.23.0"
-}
-
-repositories {
-    // Use jcenter for resolving your dependencies.
-    // You can declare any Maven/Ivy/file repository here.
-    jcenter()
-}
-
-sourceCompatibility = 1.8
-
-dependencies {
-    // This dependency is found on compile classpath of this component and consumers.
-    implementation 'org.checkerframework:checker:2.9.0'
-
-    // Testing
-    testImplementation 'junit:junit:4.12'
-    testCompile 'org.checkerframework:testlib:2.5.4'
-
-    // AutoValue support
-    implementation 'com.google.auto.value:auto-value-annotations:1.6.5'
-    testCompile 'com.google.auto.value:auto-value-annotations:1.6.5'
-    testCompile 'com.google.auto.value:auto-value:1.6.5'
-
-    // Lombok support
-    testCompile 'org.projectlombok:lombok:1.18.8'
-}
-
-tasks.withType(JavaCompile).all {
-    options.compilerArgs.add("-Xlint:all")
-}
-
-def rrVersion = '0.1-SNAPSHOT'
-
-task qualJar(type: Jar) {
-    baseName 'returnsrcvr-qual'
-    from (sourceSets.main.output) {
-        include "**/qual/**"
+buildscript {
+    repositories {
+        // for spotless to load its dependencies
+        jcenter()
     }
 }
 
-// Run `./gradlew publishToMavenLocal` to publish your checker to your local Maven repository.
-publishing {
-    publications {
-        checker(MavenPublication) {
-            groupId = 'org.checkerframework'
-            artifactId = 'returnsrcvr-checker'
-            version = "${rrVersion}"
-
-            from components.java
-        }
-
-        qual(MavenPublication) {
-            groupId = 'org.checkerframework'
-            artifactId = 'returnsrcvr-qual'
-            version = "${rrVersion}"
-            artifact qualJar
-        }
-    }
-}
-
-// run google java format
-spotless {
-    // uncomment this line to temporarily disable spotless (i.e. when debugging)
-    // enforceCheck = false
-    java {
-        googleJavaFormat()
+subprojects { project ->
+    repositories {
+        jcenter()
     }
 }
