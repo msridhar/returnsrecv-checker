@@ -79,7 +79,8 @@ public class ReturnsRcvrAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
 
       boolean inAutoValueBuilder = hasAnnotation(enclosingElement, AutoValue.Builder.class);
       boolean inLombokBuilder =
-          hasAnnotationByName(enclosingElement, "lombok.Generated")
+          (hasAnnotationByName(enclosingElement, "lombok.Generated")
+                  || hasAnnotationByName(element, "lombok.Generated"))
               && enclosingElement.getSimpleName().toString().endsWith("Builder");
 
       if (!inAutoValueBuilder && !inLombokBuilder) {
